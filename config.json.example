@@ -1,0 +1,10 @@
+{
+    "token": "YOUR_TOKEN",
+    "self_roles_channel": 123,
+    "grinder_payment_channels": [
+        123
+    ],
+    "grinder_payment_acceptors": [
+        123
+    ]
+}
