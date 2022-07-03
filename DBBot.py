@@ -11,10 +11,13 @@ bot: BotBaseBot = BotBaseBot(command_prefix="db", case_insensitive=True, strip_a
 cogs: List[str] = [
 	"jishaku",
 
+	"cogs.Configuration",
+	"cogs.Counting",
 	"cogs.Grinders",
 	"cogs.Owner",
 	"cogs.SelfRoles",
 	"cogs.SlashRoles",
+	"cogs.Support",
 ]
 
 @bot.event
@@ -23,7 +26,8 @@ async def on_ready() -> None:
 
 async def startup():
 	print("starting up...")
-	bot.persistent_views_added = False
+	bot.selfrole_view_set = False
+	bot.support_view_set = False
 
 	await bot.wait_until_ready()
 	# bot vars
@@ -33,7 +37,8 @@ async def startup():
 
 	# db stuff
 	bot.db = await aiosqlite.connect("dbs/db.sqlite3")
-	bot.grinders_db = DatabaseHandlers.GrinderDatabaseHandler(bot)
+	bot.grinders_db: DatabaseHandlers.GrinderDatabaseHandler = DatabaseHandlers.GrinderDatabaseHandler(
+		bot)
 	print("Setup DB")
 
 	# cogs
@@ -45,7 +50,7 @@ async def startup():
 			exc = f"{type(e).__name__,}: {e}"
 			print(f"Failed to load extension {extension}\n{exc}")
 
-		await bot.sync_application_commands(guild_id=bot.guild.id)
+	await bot.resync_slash_commands()
 
 	print("Synced slash commands")
 	await bot.owner.send("All Ready")

@@ -11,4 +11,5 @@ class Config:
 		json.dump(self.config, open(self.fn, "w"))
 
 	def get(self, key):
+		self.config = json.load(open(self.fn))
 		return self.config[key]

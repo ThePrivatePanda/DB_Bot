@@ -63,18 +63,9 @@ class BotBaseBot(commands.Bot):
 		return channel
 
 	async def resync_slash_commands(self) -> None:
-		cached_guild_data: Dict[Optional[int], dict] = {}
 		for app_cmd in self.get_all_application_commands():
 			if not app_cmd.command_ids:
-				if app_cmd.is_global:
-					if None not in cached_guild_data:
-						cached_guild_data[None] = await self.http.get_global_commands(self.application_id)
-					await self.deploy_application_commands(data=cached_guild_data[None])
-				elif app_cmd.is_guild:
+				if app_cmd.is_guild:
 					for guild_id in app_cmd.guild_ids_to_rollout:
-						if guild_id not in cached_guild_data:
-							cached_guild_data[guild_id] = await self.http.get_guild_commands(
-								self.application_id, guild_id
-							)
 						guild = self.get_guild(guild_id)
-						await guild.deploy_application_commands(cached_guild_data[guild_id])
+						await guild.rollout_application_commands()

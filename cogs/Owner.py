@@ -5,7 +5,7 @@ class Owner(commands.Cog):
 	def __init__(self, bot: commands.Bot):
 		self.bot: commands.Bot = bot
 
-	@slash_command(name="extension", description="Controls extension-related actions.")
+	@slash_command(name="extension", description="Controls extension-related actions.", guild_ids=[819084505037799465])
 	async def base_extension_cmd(self, interaction: Interaction):
 		await interaction.send(f"How did you get here? Seriously, contact "
 							   f"{self.bot.owner.mention} if you see this!")
