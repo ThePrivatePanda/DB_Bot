@@ -1,18 +1,17 @@
-from fastapi import FastAPI
-from pydantic import BaseModel
-from typing import Optional
+from flask import Flask, request
+from flask_restful import Api, Resource, reqparse
 
-class Vote(BaseModel):
-    guild: int
-    user: int
-    type: str
-    query: Optional[str] = None
+app = Flask(__name__)
+api = Api(app)
 
 
-app = FastAPI()
 
+class Vote(Resource):
+    def post(self):
+        print(request.headers)
+        pass
 
-@app.post("/")
-async def receieve_new_vote(info: Vote):
-    print(info)
-    return 200
+api.add_resource(Vote, "/")
+
+app.run("0.0.0.0", "50505")
+print("h")

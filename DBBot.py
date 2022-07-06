@@ -1,3 +1,4 @@
+from discord import Guild
 from nextcord import Intents
 from BotBase import BotBaseBot
 from ConfigHandler import Config
@@ -28,17 +29,18 @@ async def startup():
 	print("starting up...")
 	bot.selfrole_view_set = False
 	bot.support_view_set = False
+	bot.owner_id = 736147895039819797
 
 	await bot.wait_until_ready()
 	# bot vars
-	bot.guild = await bot.getch_guild(964100538805407794)
+	bot.guild: Guild = await bot.getch_guild(964100538805407794)
 	bot.owner = await bot.getch_user(bot.owner_id)
 	print("Set bot variables")
 
 	# db stuff
 	bot.db = await aiosqlite.connect("dbs/db.sqlite3")
-	bot.grinders_db: DatabaseHandlers.GrinderDatabaseHandler = DatabaseHandlers.GrinderDatabaseHandler(
-		bot)
+	bot.grinders_db: DatabaseHandlers.GrinderDatabaseHandler = DatabaseHandlers.GrinderDatabaseHandler(bot)
+	bot.allowances_db: DatabaseHandlers.AllowancesDatabaseHandler = DatabaseHandlers.AllowancesDatabaseHandler(bot)
 	print("Setup DB")
 
 	# cogs
@@ -57,5 +59,8 @@ async def startup():
 	print("All Ready")
 
 bot.config = Config("config.json")
+bot.CountingConfig = Config("cogs/Counting/CountingConfig.json")
+bot.RolesConfig = Config("cogs/Roles/RolesConfig.json")
+
 bot.loop.create_task(startup())
 bot.run(bot.config.get("token"))

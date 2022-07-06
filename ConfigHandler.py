@@ -1,15 +1,16 @@
+from ctypes import Union
 import json
 
 
 class Config:
-	def __init__(self, fn: str):
-		self.fn = fn
-		self.config = json.load(open(fn))
+	def __init__(self, fn: str) -> None:
+		self.fn: str = fn
+		self.config: dict = json.load(open(fn))
 
-	def update(self, key, value):
+	def update(self, key: Union[dict, str], value: Union[dict, str, int, list]) -> None:
 		self.config[key] = value
 		json.dump(self.config, open(self.fn, "w"))
 
-	def get(self, key):
-		self.config = json.load(open(self.fn))
+	def get(self, key: Union[str, dict]) -> Union[dict, str, int, list]:
+		self.config: dict = json.load(open(self.fn))
 		return self.config[key]

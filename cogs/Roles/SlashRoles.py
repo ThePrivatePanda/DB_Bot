@@ -22,71 +22,14 @@ class RolesSelect(Select["RolesView"]):
 		self.bot = bot
 		self.role_type_choice = role_type_choice
 		self.limits_dict = {
-			"colour": 1,
-			"premium": 1,
-			"ping": 8,
-			"personal": 5,
-			"COR": 1,
-			"typeofplayer": 1
+			"colour_roles": 1,
+			"premium_colour_roles": 1,
+			"ping_roles": len(self.bot.RolesConfig.get("ping_roles")),
+			"personal_roles": 5,
+			"player_type_roles": 1,
+			"residence_roles": 1
 		}
-		self.choices_dict = {
-			"colour": [
-				819088603849293914,
-				819088605753901056,
-				819088607326765068,
-				819088609369260063,
-				819088611990962196,
-				819088614159548496,
-				819090264589074442,
-			],
-			"premium": [
-				819088603849293914,
-				819088605753901056,
-				819088607326765068,
-				819088609369260063,
-				819088611990962196,
-				819088614159548496,
-				819090264589074442,
-				819090264589074442,
-				819090264589074442,
-				819090264589074442,
-				819090264589074442,
-				819090264589074442,
-				819090264589074442,
-				819090264589074442,
-			],
-			"ping": [
-				819090772014923787,
-				819090776734040066,
-				819090779460206592,
-				819090780525428736,
-				819651753850568724,
-				821515809745535026,
-				820788214717218816,
-				820792593972854835,
-			],
-			"personal": [
-				819101340269281321,
-				819101299869483010,
-				842199505239670815,
-				819101716149436436,
-				819101765604474890,
-			],
-			"COR": [
-				819101340269281321,
-				819101299869483010,
-				842199505239670815,
-				819101716149436436,
-				819101765604474890,
-			],
-			"typeofplayer": [
-				990308025480925224,
-				990308038311288902,
-				990307945340342342,
-				990308032741244950,
-			],
-		}
-		self.choices = self.choices_dict[role_type_choice]
+		self.choices = self.bot.RolesConfig.get(role_type_choice)
 		super().__init__(
 			placeholder="Select your new roles",
 			min_values=0,
@@ -102,33 +45,31 @@ class RolesSelect(Select["RolesView"]):
 		)
 
 	async def callback(self, interaction: Interaction):
+		await interaction.response.defer(with_message=True, ephemeral=True)
+
 		roles = interaction.user.roles  # type: ignore
-
 		user_roles = [j.id for j in roles]
-		if self.role_type_choice == "personal":
-			if len([i for i in [819101340269281321, 819101299869483010, 842199505239670815] if i in user_roles]) > 1:
-				return await interaction.edit(content="You can have only a single role of this kind.", view=self.view, ephemeral=True)
-			if len([i for i in [819101716149436436, 819101765604474890] if i in user_roles]) > 1:
-				return await interaction.edit(content="You can have only a single role of this kind.", view=self.view, ephemeral=True)
 
-		elif self.role_type_choice in ("COR", "typeofplayer"):
-			if len(self.choices) == 1:
-				await interaction.user.remove_roles(*[interaction.guild.get_role(i) for i in self.choices_dict[self.role_type_choice]])
-				await interaction.user.add_roles(interaction.guild.get_role(self.choices[0]))
-			else:
-				return await interaction.send("You can choose only one role form that dropdown.", ephemeral=True)
+		if self.role_type_choice == "personal_roles":
+			if len([i for i in self.bot.RolesConfig.get("gender_roles") if i in user_roles]) > 1:
+				return await interaction.followup.send(content="You can have only a single role of this kind.", view=self.view, ephemeral=True)
+			if len([i for i in self.bot.RolesConfig.get("ge_roles") if i in user_roles]) > 1:
+				return await interaction.followup.edit(content="You can have only a single role of this kind.", view=self.view, ephemeral=True)
+
+		elif self.role_type_choice in ("COR", "player_type"):
+			await interaction.user.remove_roles(*[interaction.guild.get_role(i) for i in self.choices_dict[self.role_type_choice]])
+			await interaction.user.add_roles(interaction.guild.get_role(self.choices[0]))
 
 		elif self.role_type_choice in ("colour", "premium"):
-			if len(self.choices) == 1:
-				await interaction.user.remove_roles(*[interaction.guild.get_role(i) for i in self.bot.config.get("possible_colour_roles")])
-			else:
-				return await interaction.send("You can choose only one role form that dropdown.", ephemeral=True)
+			await interaction.user.remove_roles(*[interaction.guild.get_role(i) for i in self.bot.config.get("possible_colour_roles")])
+			await interaction.user.add_roles(interaction.guild.get_role(self.choices[0]))
+
 		if self.role_type_choice == "premium":
 			allowed_roles = [interaction.guild.get_role(i) for i in self.bot.config.get("premium_colours_allowed_roles")]
 			if len([i for i in allowed_roles if i in interaction.user.roles]) > 0 or interaction.user.id in self.bot.config.get("premium_colours_allowed_users"):
 				await interaction.user.add_roles(interaction.guild.get_role(self.choices[0]))
 			else:
-				return await interaction.send("You are not allowed to take premium colours!", ephemeral=True)	
+				return await interaction.followup.send("You are not allowed to take premium colours!", ephemeral=True)
 		elif self.role_type_choice == "ping":
 			for role_id in self.choices:
 				if (
@@ -158,8 +99,8 @@ class RolesSelect(Select["RolesView"]):
 			for value in self.values
 		]
 
-		await interaction.edit(
-			content=f"You now have {', '.join(new_roles) or 'no roles'}", view=self.view, ephemeral=True
+		await interaction.edit_original_message(
+			content=f"You now have {', '.join(new_roles) or 'no roles'}", view=self.view
 		)
 
 
@@ -174,12 +115,12 @@ class Roles(Cog):
 			description="What type of roles do you want to select from?",
 			required=True,
 			choices={
-				"Colour Role": "colour",
-				"Premium Colour Role": "premium",
-				"Ping Roles": "ping",
-				"Personal Roles": "personal",
-				"Type of dank Player": "typeofplayer",
-				"Your continent of residence": "COR"
+				"Colour Role": "colour_roles",
+				"Premium Colour Role": "premium_colour_roles",
+				"Ping Roles": "ping_roles",
+				"Personal Roles": "personal_roles",
+				"Type of dank Player": "player_type_roles",
+				"Your continent of residence": "residenc_rolese"
 			},
 		)
 	):  
