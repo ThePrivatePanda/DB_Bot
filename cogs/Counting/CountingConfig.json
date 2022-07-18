@@ -1,11 +1,15 @@
 {
     "counting_channel": 993131272635428914,
     "words_allowed_role": 819088598199697408,
-    "counting_count": 1,
-    "counting_count_author": 0,
+    "counting_count": 204,
+    "counting_count_author": 991567718224511010,
     "counting_prizes": {
         "1": 100,
-        "2": 200
+        "2": 200,
+        "250": 250000,
+        "342": 342000,
+        "400": 100000,
+        "500": 500000
     },
     "prize_claim_channel_id": 991925246384934962
 }

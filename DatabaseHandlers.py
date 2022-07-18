@@ -60,12 +60,12 @@ class GrinderDatabaseHandler():
 			await self.bot.db.execute("INSERT INTO grinder_payments VALUES(?, ?, ?, ?, ?, ?)", (user_id, perks_allowed, time.time(), 0, 0, tier))
 		await self.bot.db.commit()
 
-	async def get_info(self, user_id: int) -> list[Any]:
+	async def get_info(self, user_id: int):
 		cursor = await self.bot.db.execute("SELECT perks_allowed, start_time, total_paid, paid_in_timeframe, tier FROM grinder_payments WHERE user_id = ?", (user_id, ))
 		info = await cursor.fetchone()
 		return info
 
-	async def get_grinders(self) -> list[int]:
+	async def get_grinders(self):
 		cursor = await self.bot.db.execute("SELECT user_id FROM grinder_payments")
 		info = await cursor.fetchall()
 		return [i[0] for i in info]

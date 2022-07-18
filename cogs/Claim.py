@@ -9,7 +9,7 @@ class Claim(Cog):
         self.bot = bot
         self.bot.claims_db: ClaimDatabaseHandler = ClaimDatabaseHandler(bot)
 
-    @commands.command(name="claim")
+    @commands.group(name="claim")
     async def claim_main(self): ...
 
     @claim_main.command(name="prize")

@@ -1,18 +1,15 @@
 {
-    "info_channel": 0,
-    "log_channel": 0,
+    "info_channel": 821764504756158484,
+    "log_channel": 991929463841488906,
     "payment_requirements": {
-        "1": 100,
-        "2": 200,
-        "3": 300
+        "1": 7500000,
+        "2": 20000000
     },
-    "payment_channels": [],
-    "payment_acceptors": [],
+    "payment_channels": [991929246261968896],
+    "payment_acceptors": [251130323486769153, 955876891452125204],
     "tier_role_mapping": {
-        "1": 0,
-        "2": 0,
-        "3": 0
+        "1": 991916336999567471,
+        "2": 842236733357424641
     },
-    "pending_grinder": 0,
-    "top_3_grinders": 0
+    "pending_grinder": 994286436977221662
 }

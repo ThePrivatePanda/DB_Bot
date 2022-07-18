@@ -1,12 +1,12 @@
 from asyncio import tasks
-from sys import excepthook
+import asyncio
 from typing import Literal, Optional
-from discord import Colour
 from nextcord.ext.commands import Cog, Bot
-from nextcord.ext import commands
+from nextcord.ext import commands, tasks
 from nextcord import Embed, Interaction, User
 import nextcord
-
+import pendulum
+import time
 
 class BecomeAGrinder(nextcord.ui.View):
 	def __init__(self, bot: Bot):
@@ -57,12 +57,14 @@ class Grinders(Cog):
 	def __init__(self, bot: Bot):
 		self.bot = bot
 		self.GrinderViewsAdded = False
+		self.wipe_grinder_db.start()
 		self.bot.loop.create_task(self.create_views())
 
 	async def create_views(self):
 		await self.bot.wait_until_ready()
 		if not self.GrinderViewsAdded:
 			self.bot.add_view(BecomeAGrinder(self.bot))
+
 	
 	def beautify_top_10(self, data):
 		h = []
@@ -91,7 +93,7 @@ Please note that your lifetime payments have been saved!
 		except:
 			pass
 
-	@tasks.loop(weeks=1)
+	@tasks.loop(hours=168)
 	async def wipe_grinder_db(self):
 		for user_id, paid, tier in await self.bot.grinders_db.get_all_payments():
 			requirement = self.bot.GrindersConfig.get("payment_requirements")[str(tier)]
@@ -117,6 +119,12 @@ Please note that your lifetime payments have been saved!
 					await m.pin()
 				except:
 					pass
+	
+	@wipe_grinder_db.before_loop
+	async def before_wipe_loop(self):
+		next_saturday = pendulum.now(tz="GMT").next(pendulum.SATURDAY).timestamp()-1
+		time_remaining = next_saturday - time.time()
+		await asyncio.sleep(time_remaining)
 
 	@commands.command(name="grinder_pay")
 	async def grinder_pay(self, ctx: commands.Context, arg: Literal["channels, users"]):
