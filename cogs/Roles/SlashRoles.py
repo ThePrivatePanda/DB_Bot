@@ -1,19 +1,28 @@
 """Configurations Used:
-possible_colour_roles          list[int] - A list of role ids of all possible colour roles. These are used to atomically remove all colour roles when taking a new one
-premium_colours_allowed_roles  list[int] - The roles that can take premium colours.
-premium_colours_allowed_users  list[int] - Particular users that can take premium colours.
+RolesConfig -
+	colour_roles: list[int]
+	premium_colour_roles: list[int]
+	ping_roles: list[int]
+	personal_roles: list[int]
+	player_type_roles: list[int]
+	residence_roles: list[int]
+
+	premium_colours_allowed_roles  list[int] - The roles that can take premium colours.
+	premium_colours_allowed_users  list[int] - Particular users that can take premium colours.
 """
 
+from code import interact
+from discord import Role
 from nextcord import Interaction, Member, Object, SelectOption, slash_command, SlashOption
 from nextcord.ext.commands import Cog
 from nextcord.ui import Select, View
 from nextcord.utils import get
 from nextcord.ext.commands import Bot
+from ConfigHandler import Config
 
 class RolesView(View):
 	def __init__(self, *, member: Member, role_type_choice, bot):
 		super().__init__(timeout=None)
-
 		self.add_item(RolesSelect(member=member, role_type_choice=role_type_choice, bot=bot))
 
 
@@ -29,49 +38,54 @@ class RolesSelect(Select["RolesView"]):
 			"player_type_roles": 1,
 			"residence_roles": 1
 		}
-		self.choices = self.bot.RolesConfig.get(role_type_choice)
+		self.choices_ = self.bot.RolesConfig.get(role_type_choice)
+		self.roles_: list[Role] = [member.guild.get_role(i) for i in self.choices_]
 		super().__init__(
 			placeholder="Select your new roles",
 			min_values=0,
 			max_values=self.limits_dict[role_type_choice],
 			options=[
 				SelectOption(
-					label=member.guild.get_role(role_id).name,  # type: ignore
-					value=str(role_id),
-					default=member.get_role(role_id) is not None,
+					label=i.name,  # type: ignore
+					value=str(i.id),
+					default=member.get_role(i.id) is not None,
 				)
-				for role_id in self.choices
+				for i in self.roles_
 			],
 		)
 
 	async def callback(self, interaction: Interaction):
-		await interaction.response.defer(with_message=True, ephemeral=True)
-
 		roles = interaction.user.roles  # type: ignore
-		user_roles = [j.id for j in roles]
+
+		if self.role_type_choice in ("colour_roles", "premium_colour_roles"):
+			await interaction.user.edit(roles=[i for i in interaction.user.roles if i.id not in [j for j in self.bot.RolesConfig.get("colour_roles")]+[k for k in self.bot.RolesConfig.get("premium_colour_roles")]])
+
+			if self.role_type_choice == "premium_roles":
+				allowed_roles = [i for i in self.bot.config.get("premium_colours_allowed_roles")]
+				allowed_users = [i for i in self.bot.config.get("premium_colours_allowed_users")]
+				if len([i for i in allowed_roles if i in interaction.user.roles]) > 0 or interaction.user.id in allowed_users:
+					pass
+				else:
+					return await interaction.followup.send("You are not allowed to take premium colours!", ephemeral=True)
+
+			await interaction.user.add_roles(*[i for i in self.roles_ if str(i.id) in self.values])
 
 		if self.role_type_choice == "personal_roles":
-			if len([i for i in self.bot.RolesConfig.get("gender_roles") if i in user_roles]) > 1:
+			if len([i for i in self.bot.RolesConfig.get("gender_roles") if i in self.values]) > 1:
 				return await interaction.followup.send(content="You can have only a single role of this kind.", view=self.view, ephemeral=True)
-			if len([i for i in self.bot.RolesConfig.get("ge_roles") if i in user_roles]) > 1:
+			if len([i for i in self.bot.RolesConfig.get("age_roles") if i in self.values]) > 1:
 				return await interaction.followup.edit(content="You can have only a single role of this kind.", view=self.view, ephemeral=True)
-
-		elif self.role_type_choice in ("COR", "player_type"):
-			await interaction.user.remove_roles(*[interaction.guild.get_role(i) for i in self.choices_dict[self.role_type_choice]])
-			await interaction.user.add_roles(interaction.guild.get_role(self.choices[0]))
-
-		elif self.role_type_choice in ("colour", "premium"):
-			await interaction.user.remove_roles(*[interaction.guild.get_role(i) for i in self.bot.config.get("possible_colour_roles")])
-			await interaction.user.add_roles(interaction.guild.get_role(self.choices[0]))
-
-		if self.role_type_choice == "premium":
-			allowed_roles = [interaction.guild.get_role(i) for i in self.bot.config.get("premium_colours_allowed_roles")]
-			if len([i for i in allowed_roles if i in interaction.user.roles]) > 0 or interaction.user.id in self.bot.config.get("premium_colours_allowed_users"):
-				await interaction.user.add_roles(interaction.guild.get_role(self.choices[0]))
 			else:
-				return await interaction.followup.send("You are not allowed to take premium colours!", ephemeral=True)
-		elif self.role_type_choice == "ping":
-			for role_id in self.choices:
+				await interaction.user.edit(roles=[i for i in interaction.user.roles if i.id not in [j for j in self.bot.RolesConfig.get("personal_roles")]])
+				await interaction.user.add_roles(*[i for i in self.roles_ if str(i.id) in self.values])
+
+		elif self.role_type_choice in ("residence_roles", "player_type_roles"):
+			await interaction.user.edit(roles=[i for i in interaction.user.roles if i.id not in [j for j in self.bot.RolesConfig.get("residence_roles")]+[k for k in self.bot.RolesConfig.get("player_type_roles")]])
+			await interaction.user.add_roles([i for i in self.roles_ if i.id == int(self.values[0])][0])
+
+		elif self.role_type_choice == "ping_roles":
+			for role_id in self.values:
+				role_id = int(role_id)
 				if (
 					interaction.user.get_role(role_id) is None
 					and str(role_id) in self.values
@@ -94,14 +108,9 @@ class RolesSelect(Select["RolesView"]):
 
 			await interaction.user.edit(roles=roles)
 
-		new_roles = [
-			interaction.guild.get_role(int(value)).name  # type: ignore
-			for value in self.values
-		]
+		new_roles = [i.mention for i in self.roles_ if str(i.id) in self.values]
 
-		await interaction.edit_original_message(
-			content=f"You now have {', '.join(new_roles) or 'no roles'}", view=self.view
-		)
+		await interaction.edit(content=f"You now have {', '.join(new_roles) or 'no roles of this dropdown'}.", view=None)
 
 
 class Roles(Cog):
@@ -120,7 +129,7 @@ class Roles(Cog):
 				"Ping Roles": "ping_roles",
 				"Personal Roles": "personal_roles",
 				"Type of dank Player": "player_type_roles",
-				"Your continent of residence": "residenc_rolese"
+				"Continent of residence": "residence_roles"
 			},
 		)
 	):  

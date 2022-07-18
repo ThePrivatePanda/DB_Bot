@@ -4,7 +4,7 @@ from BotBase import BotBaseBot
 from ConfigHandler import Config
 from typing import List
 import aiosqlite
-import DatabaseHandlers
+from DatabaseHandlers import AllowancesDatabaseHandler
 
 
 bot: BotBaseBot = BotBaseBot(command_prefix="db", case_insensitive=True, strip_after_prefix=True, intents=Intents.all())
@@ -12,12 +12,28 @@ bot: BotBaseBot = BotBaseBot(command_prefix="db", case_insensitive=True, strip_a
 cogs: List[str] = [
 	"jishaku",
 
-	"cogs.Configuration",
-	"cogs.Counting",
-	"cogs.Grinders",
+	"cogs.Afk.AfkConfig",
+	"cogs.Afk.Afk",
+
+	"cogs.Bonk.BonkConfig",
+	"cogs.Bonk.Bonk",
+
+	"cogs.Counting.Counting",
+	"cogs.Counting.CountingConfig",
+
+	"cogs.Grinders.GrindersConfig",
+	"cogs.Grinders.PaymentLogging",
+	"cogs.Grinders.Grinders",
+
+	"cogs.Roles.RolesConfig",
+	"cogs.Roles.SelfRoles",
+	"cogs.Roles.SlashRoles",
+
+	"cogs.ServerGuardian.TwitterPing",
+
+
+	"cogs.Claim",
 	"cogs.Owner",
-	"cogs.SelfRoles",
-	"cogs.SlashRoles",
 	"cogs.Support",
 ]
 
@@ -33,14 +49,14 @@ async def startup():
 
 	await bot.wait_until_ready()
 	# bot vars
-	bot.guild: Guild = await bot.getch_guild(964100538805407794)
+	bot.guild: Guild = await bot.getch_guild(819084505037799465)
 	bot.owner = await bot.getch_user(bot.owner_id)
 	print("Set bot variables")
 
 	# db stuff
 	bot.db = await aiosqlite.connect("dbs/db.sqlite3")
-	bot.grinders_db: DatabaseHandlers.GrinderDatabaseHandler = DatabaseHandlers.GrinderDatabaseHandler(bot)
-	bot.allowances_db: DatabaseHandlers.AllowancesDatabaseHandler = DatabaseHandlers.AllowancesDatabaseHandler(bot)
+	bot.allowances_db: AllowancesDatabaseHandler = AllowancesDatabaseHandler(bot)
+
 	print("Setup DB")
 
 	# cogs
@@ -59,8 +75,5 @@ async def startup():
 	print("All Ready")
 
 bot.config = Config("config.json")
-bot.CountingConfig = Config("cogs/Counting/CountingConfig.json")
-bot.RolesConfig = Config("cogs/Roles/RolesConfig.json")
-
 bot.loop.create_task(startup())
 bot.run(bot.config.get("token"))

@@ -1,8 +1,18 @@
 """Configurations Used:
-possible_colour_roles   list[int]  - A list of role ids of all possible colour roles. These are used to atomically remove all colour roles when taking a new one
-self_roles_channel         int     - The channel in which the selfroles menu is sent.
-premium_roles_channel      int     - The channel in which the premium colours selfroles menu is sent.
+RolesConfig - 
+	colour_roles: list[int]
+	premium_colour_roles: list[int]
+	ping_roles: list[int]
+	personal_roles: list[int]
+	player_type_roles: list[int]
+	gender_roles: list[int]
+	age_roles: list[int]
+	residence_roles: list[int]
+
+Config-
+	self_roles_channel: int
 """
+from discord import InteractionResponded
 import nextcord
 from nextcord import Interaction, Role, SelectOption
 
@@ -29,7 +39,7 @@ class Confirm(nextcord.ui.View):
 class ColourDropdown(nextcord.ui.Select):
 	def __init__(self, bot: Bot):
 		self.bot = bot
-		self.my_roles_: list[Role] = [self.bot.guild.get_role(i) for i in [j for j in bot.RolesConfig.get("colour_roles")]]
+		self.my_roles_: list[Role] = [self.bot.guild.get_role(i) for i in self.bot.RolesConfig.get("colour_roles")]
 		self.my_options_: list[SelectOption] = [
 			SelectOption(label=i.name, value=i.id)
 			for i in self.my_roles_
@@ -46,18 +56,18 @@ class ColourDropdown(nextcord.ui.Select):
 	async def callback(self, interaction: Interaction) -> None:
 		await interaction.response.defer(ephemeral=True, with_message=True)
 		await interaction.user.edit(roles=[i for i in interaction.user.roles if i.id not in [j for j in self.bot.RolesConfig.get("colour_roles")]+[k for k in self.bot.RolesConfig.get("premium_colour_roles")]])
-		
+
 		if len(self.values) == 0:
 			return await interaction.followup.send("Removed all your colour roles.", ephemeral=True)
 
-		new: Role = [i for i in self.my_roles_ if i.id == self.values[0]][0]
+		new: Role = [i for i in self.my_roles_ if str(i.id) == self.values[0]][0]
 		await interaction.user.add_roles(new)
 		await interaction.followup.send(f"You now have the {new.mention} role.", ephemeral=True)
 
 class PremiumDropdown(nextcord.ui.Select):
 	def __init__(self, bot: Bot):
 		self.bot = bot
-		self.my_roles_: list[Role] = [self.bot.guild.get_role(i) for i in [j for j in bot.RolesConfig.get("premium_colour_roles")]]
+		self.my_roles_: list[Role] = [self.bot.guild.get_role(i) for i in self.bot.RolesConfig.get("premium_colour_roles")]
 		self.my_options_: list[SelectOption] = [
 			SelectOption(label=i.name, value=i.id)
 			for i in self.my_roles_
@@ -71,13 +81,14 @@ class PremiumDropdown(nextcord.ui.Select):
 		if len(self.values) == 0:
 			return await interaction.followup.send("Removed all your colour roles.", ephemeral=True)
 
-		new: Role = [i for i in self.my_roles_ if i.id == self.values[0]][0]
+		new: Role = [i for i in self.my_roles_ if str(i.id) == self.values[0]][0]
 		await interaction.user.add_roles(new)
 		await interaction.followup.send(f"You now have the {new.mention} role.", ephemeral=True)
 
 class PingDropdown(nextcord.ui.Select):
 	def __init__(self, bot: Bot):
-		self.my_roles_: list[Role] = [self.bot.guild.get_role(i) for i in [j for j in bot.RolesConfig.get("ping_roles")]]
+		self.bot = bot
+		self.my_roles_: list[Role] = [self.bot.guild.get_role(i) for i in self.bot.RolesConfig.get("ping_roles")]
 		self.my_options_: list[SelectOption] = [
 			nextcord.SelectOption(label=i.name, value=i.id)
 			for i in self.my_roles_
@@ -92,12 +103,13 @@ class PingDropdown(nextcord.ui.Select):
 
 	async def callback(self, interaction: nextcord.Interaction):
 		await interaction.response.defer(ephemeral=True, with_message=True)
+
 		if len(self.values) == 0:
-			await interaction.user.remove_roles(*[i for i in self.my_roles_ if i.id in interaction.user.roles])
+			await interaction.user.edit(roles=[i for i in interaction.user.roles if i.id not in self.bot.RolesConfig.get("ping_roles")])
 			return await interaction.followup.send("Removed all your roles from this dropdown", ephemeral=True)
 
 		old_roles = interaction.user.roles
-		chosen: list[Role] = [i for i in self.my_roles_ if i.id in self.values]
+		chosen: list[Role] = [i for i in self.my_roles_ if str(i.id) in self.values]
 
 		rem: list[Role] = []
 		add: list[Role] = []
@@ -105,20 +117,12 @@ class PingDropdown(nextcord.ui.Select):
 		for i in chosen:
 			if i in old_roles:
 				rem.append(i)
-				old_roles.pop(i)
+				old_roles.pop(old_roles.index(i))
 			else:
 				add.append(i)
 				old_roles.append(i)
 
 		changes = "\n".join([f":green_circle: Added {i.name}" for i in add] + [f":red_circle: Removed {i.name}" for i in rem])
-
-		for i in chosen:
-			if i in interaction.user.roles:
-				changes.append(f":red_circle: {i.name} will be removed")
-				rem.append(i)
-			else:
-				changes.append(f":green_circle: {i.name} will be added")
-				add.append(i)
 
 		embed = nextcord.Embed(title="Confirmation", description=f"The following changes will be done:\n{changes}").set_thumbnail(url=interaction.guild.icon.url)
 		confirm_view = Confirm()
@@ -132,16 +136,17 @@ class PingDropdown(nextcord.ui.Select):
 		if confirm_view.value is not True:
 			await interaction.send('Well, ok, not then.', ephemeral=True)
 			return
-		
-		interaction.user.edit(roles=old_roles)
+
+		await interaction.user.edit(roles=old_roles)
 		now = ", ".join([i.mention for i in self.my_roles_ if i in interaction.user.roles])
 
-		return await mg.edit(f"You now have the following roles:\n{', '.join([i.name for i in now])}", embed=None, view=None)
+		return await mg.edit(f"You now have the following roles:\n{now}.", embed=None, view=None)
 
 
 class PlayerTypeDropdown(nextcord.ui.Select):
 	def __init__(self, bot: Bot):
-		self.my_roles_: list[Role] = [bot.guild.get_role(i) for i in [j for j in bot.RolesConfig.get("player_type_roles")]]
+		self.bot = bot
+		self.my_roles_: list[Role] = [self.bot.guild.get_role(i) for i in self.bot.RolesConfig.get("player_type_roles")]
 		self.my_options_: list[SelectOption]= [
 			SelectOption(label=i.name, value=i.id)
 			for i in self.my_roles_
@@ -161,7 +166,7 @@ class PlayerTypeDropdown(nextcord.ui.Select):
 		if len(self.values) == 0:
 			return await interaction.followup.send("Removed all your roles from this dropdown", ephemeral=True)
 
-		new = [i for i in self.my_roles_ if i.id == self.values[0]][0]
+		new = [i for i in self.my_roles_ if str(i.id) == self.values[0]][0]
 
 		await interaction.user.add_roles(new)
 		await interaction.followup.send(f"You are now a {new.mention}.")
@@ -169,7 +174,8 @@ class PlayerTypeDropdown(nextcord.ui.Select):
 
 class PersonalDropdown(nextcord.ui.Select):
 	def __init__(self, bot: Bot):
-		self.my_roles_: list[Role] = [self.bot.guild.get_role(i) for i in [j for j in bot.RolesConfig.get("personal_roles")]]
+		self.bot = bot
+		self.my_roles_: list[Role] = [self.bot.guild.get_role(i) for i in self.bot.RolesConfig.get("personal_roles")]
 		self.my_options_: list[SelectOption] = [
 			SelectOption(label=i.name, value=i.id)
 			for i in self.my_roles_
@@ -188,32 +194,32 @@ class PersonalDropdown(nextcord.ui.Select):
 		possibles_gender = self.bot.RolesConfig.get("gender_roles")
 		possibles_age = self.bot.RolesConfig.get("age_roles")
 
-		if len([i for i in possibles_gender if i in self.values]) == 2 or len([i for i in possibles_age if i in self.values]) == 2:
+		if len([i for i in possibles_gender if str(i) in self.values]) == 2 or len([i for i in possibles_age if str(i) in self.values]) == 2:
 			return await interaction.followup.send("You can have only a single role of this kind. Please restart.")
 
 		if len(self.values) == 1:
-			id = self.values[0]
+			id = int(self.values[0])
 			if id in possibles_gender:
-				await interaction.user.remove_roles(*[i for i in self.my_roles_ if i.id in possibles_gender and i in interaction.user.roles])
+				await interaction.user.edit(roles=[i for i in interaction.user.roles if i.id not in possibles_gender])
 			elif id in possibles_age:
-				await interaction.user.remove_roles([i for i in self.my_roles_ if i.id in possibles_age and i in interaction.user.roles][0])
+				await interaction.user.edit(roles=[i for i in interaction.user.roles if i.id not in possibles_age])
 			await interaction.user.add_roles([i for i in self.my_roles_ if i.id == id][0])
-			
 			return await interaction.followup.send("Al' done.")
 
-		await interaction.user.remove_roles(*[i for i in self.my_roles_ if i in interaction.user.roles])
+		await interaction.user.edit(roles=[i for i in interaction.user.roles if i.id not in self.bot.RolesConfig.get("personal_roles")])
 		if len(self.values) == 0:
 			return await interaction.followup.send("Removed all your roles from this dropdown", ephemeral=True)
 
 		if len(self.values) == 2:
-			await interaction.user.add_roles(*[i for i in self.my_roles_ if i.id in self.values])
+			await interaction.user.add_roles(*[i for i in self.my_roles_ if str(i.id) in self.values])
 
 		await interaction.followup.send("Al' done.")
 
 
 class ResidenceDropdown(nextcord.ui.Select):
 	def __init__(self, bot: Bot):
-		self.my_roles_: list[Role] = [bot.guild.get_role(i) for i in [j for j in bot.RolesConfig.get("residence_roles")]]
+		self.bot = bot
+		self.my_roles_: list[Role] = [self.bot.guild.get_role(i) for i in self.bot.RolesConfig.get("residence_roles")]
 		self.my_options_: list[SelectOption] = [
 			SelectOption(label=i.name, value=i.id)
 			for i in self.my_roles_
@@ -228,13 +234,13 @@ class ResidenceDropdown(nextcord.ui.Select):
 
 	async def callback(self, interaction: nextcord.Interaction):
 		await interaction.response.defer(ephemeral=True, with_message=True)
-		await interaction.user.remove_roles(*[i for i in self.my_roles_ if i in interaction.user.roles])
+		await interaction.user.edit(roles=[i for i in interaction.user.roles if i.id not in self.bot.RolesConfig.get("residence_roles")])
 
 		if len(self.values) == 0:
 			return await interaction.followup.send("Removed all your roles from this dropdown", ephemeral=True)
 
-		new = [i for i in self.my_roles_ if i.id == self.values[0]][0]
-		await interaction.user.add_roles([i for i in self.my_roles_ if i.id == self.values[0]][0])
+		new = [i for i in self.my_roles_ if str(i.id) == self.values[0]][0]
+		await interaction.user.add_roles(new)
 		await interaction.followup.send(f"You now have the {new.mention} role.")
 
 
@@ -276,6 +282,7 @@ class SelfRoles(commands.Cog):
 		self.bot.loop.create_task(self.create_views())
 
 	async def create_views(self):
+		await self.bot.wait_until_ready()
 		if not self.bot.selfrole_view_set:
 			self.bot.add_view(ColourDropdownView(self.bot))
 			self.bot.add_view(PremiumDropdownView(self.bot))
@@ -286,7 +293,7 @@ class SelfRoles(commands.Cog):
 			self.bot.selfrole_view_set = True
 
 	@commands.group("selfrole")
-	async def selfrole(self):
+	async def selfrole(self, ctx):
 		pass
 
 	@selfrole.command()

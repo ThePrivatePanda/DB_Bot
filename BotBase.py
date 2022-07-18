@@ -1,7 +1,7 @@
-from typing import Union, Dict, Optional
+from typing import Union, Optional
 from nextcord.abc import GuildChannel
 from nextcord.ext import commands
-from nextcord import Guild, Member, User
+from nextcord import Guild, Member, User, Message, Role
 from nextcord.ext import commands
 from aiosqlite.core import Connection
 
@@ -19,6 +19,21 @@ class BotBaseBot(commands.Bot):
 		except:
 			return False
 		return guild
+
+	async def getch_role(self, guild_id: int, role_id: int) -> Optional[Role]:
+		"""Looks up a guild in cache or fetches if not found."""
+		guild: Optional[Guild] = self.getch_guild(guild_id)
+		if not guild:
+			return False
+		role: Optional[Role] = guild.get_role(role_id)
+		if role:
+			return role
+		else:
+			try:
+				role = await guild.fetch_role(role_id)
+			except:
+				return False
+		return role
 
 	async def getch_user(self, user_id: int) -> Union[User, bool]:
 		"""Looks up a user in cache or fetches if not found."""
@@ -61,6 +76,18 @@ class BotBaseBot(commands.Bot):
 			return False
 
 		return channel
+
+	async def getch_message(self, channel_id: int, message_id: int) -> Optional[Message]:
+		"""Looks up a channel in cache or fetches if not found."""
+		channel = await self.getch_channel(channel_id)
+		if not channel:
+			return None
+
+		try:
+			message = await channel.fetch_message(message_id)
+			return message
+		except:
+			return None
 
 	async def resync_slash_commands(self) -> None:
 		for app_cmd in self.get_all_application_commands():

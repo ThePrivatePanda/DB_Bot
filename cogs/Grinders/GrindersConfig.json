@@ -1,0 +1,18 @@
+{
+    "info_channel": 0,
+    "log_channel": 0,
+    "payment_requirements": {
+        "1": 100,
+        "2": 200,
+        "3": 300
+    },
+    "payment_channels": [],
+    "payment_acceptors": [],
+    "tier_role_mapping": {
+        "1": 0,
+        "2": 0,
+        "3": 0
+    },
+    "pending_grinder": 0,
+    "top_3_grinders": 0
+}

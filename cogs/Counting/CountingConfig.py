@@ -1,21 +1,65 @@
+"""Configurations Used:
+Config -
+	config_logging_channel      int    - The channel in which the bot logs changes
+"""
+
+from re import T
 from nextcord.ext.commands import Cog, Bot
-from nextcord import slash_command, SlashOption, Interaction, Embed, Colour, User, ChannelType, Role
+from nextcord import slash_command, SlashOption, Interaction, Embed, Colour, User, ChannelType, Role, File
 from datetime import date
 from nextcord.abc import GuildChannel
 from ConfigHandler import Config
+import io
 from DatabaseHandlers import CountingPrizesDatabaseHandler
 
 class CountingConfig(Cog):
 	def __init__(self, bot: Bot):
 		self.bot = bot
-		self.bot.CountingConfig: Config = Config("CountingConfig.json")
-		self.bot.CountingPrizesDatabaseHandler: CountingPrizesDatabaseHandler = CountingPrizesDatabaseHandler(self.bot)
+		self.bot.CountingConfig: Config = Config("cogs/Counting/CountingConfig.json")
+		self.bot.counting_db: CountingPrizesDatabaseHandler = CountingPrizesDatabaseHandler(bot)
+
+
+	@slash_command(name="prize_history", guild_ids=[819084505037799465], description="Get who changed/set the prize for a count")
+	async def prize_history(
+		self, 
+		interaction: Interaction, 
+		count: int = SlashOption(
+			description="Check who last changed/set a counting prize.",
+			required=False)
+	):
+		if not (interaction.user.guild_permissions.manage_guild or interaction.user.id == self.bot.owner_id):
+			return await interaction.send("Only guild managers are allowed to use this command.", ephemeral=True)
+
+		if count:
+			r = await self.bot.counting_db.get(count)
+			if r:
+				user_id, time = r
+			else:
+				await interaction.send("I don't have any info on that count.", ephemeral=True)
+			await interaction.send(f"The prize was set by <@{user_id}> at time: <t:{int(time)}:f> (Localized time)", ephemeral=False)
+		else:
+			_all = await self.bot.counting_db.get_all()
+			info = []
+			for count, user_id, time in _all:
+				info.append(f"{count}: <@{user_id}> at time: <t:{int(time)}:f>")
+			info = "\n".join(info)
+			if len(info) > 2000:
+				info = []
+				for count, user_id, time in _all:
+					user = await self.bot.getch_user(user_id)
+					time = date.fromtimestamp(time).strftime("%Y-%m-%d %H:%M:%S")
+					info.append(f"{count}: {user.name}#{user.discriminator} ({user.id}) at time: {time}")
+				info = "\n".join(info)
+				buf = io.BytesIO(bytes(info, "utf-8"))
+				await interaction.send(file=File(buf, "prize_change_history.txt"), ephemeral=False)
+			else:
+				await interaction.send(f"{info}", ephemeral=True)
 
 	@slash_command(name="config_counting", guild_ids=[819084505037799465], description="Configure counting settings of the bot.")
 	async def counting_config(self):...
 
 	@counting_config.subcommand(name="get_config", description="Get the current counting config")
-	async def config_counting_author(
+	async def config_counting_get_config(
 		self,
 		interaction: Interaction,
 		variable: str = SlashOption(
@@ -27,13 +71,18 @@ class CountingConfig(Cog):
 				"Count": "counting_count",
 				"Count Author": "counting_count_author",
 				"Prizes": "counting_prizes",
-				"Prize claim channel": "prize_claim_channel_id"
+				"Prize claim channel": "prize_claim_channel_id",
+				"Event Blacklist Role": "events_blacklist_role",
+				"Support Channel": "support_channel",
 			}
 		)
 	):
 		if not (interaction.user.guild_permissions.manage_guild or interaction.user.id == self.bot.owner_id):
 			return await interaction.send("Only guild managers are allowed to use this command.", ephemeral=True)
-		await interaction.send(self.bot.CountingConfig.get(variable), ephmeral=True)
+		if variable:
+			await interaction.send(self.bot.CountingConfig.get(variable), ephemeral=True)
+		else:
+			await interaction.send(self.bot.CountingConfig.config, ephemeral=True)
 
 	@counting_config.subcommand(name="channel", description="Change the counting channel")
 	async def config_counting_channel(
@@ -81,6 +130,19 @@ class CountingConfig(Cog):
 		)
 
 		self.bot.CountingConfig.update("counting_channel", new_channel.id)
+
+		channel = await self.bot.getch_channel(self.bot.config.get("config_logging_channel"))
+		await channel.send(embed=Embed(
+			title="Counting Channel Changed",
+			description=f"""
+Before: <#{old_channel}>
+After: <#{new_channel}>
+Action by: {interaction.user.mention}
+""",
+		colour=Colour.green())
+		.set_footer(text=f"DB Bot | {date.today().strftime('%B %d, %Y')}", icon_url=interaction.user.display_avatar.url)
+		.set_thumbnail(url=interaction.guild.icon.url)
+		)
 		await interaction.send(f"Counting channel set to {new_channel.mention}", ephemeral=True)
 
 	@counting_config.subcommand(name="words_allowed", description="Change the last count the bot knows of")
@@ -95,7 +157,22 @@ class CountingConfig(Cog):
 		if not (interaction.user.guild_permissions.manage_guild or interaction.user.id == self.bot.owner_id):
 			return await interaction.send("Only guild managers are allowed to use this command.", ephemeral=True)
 
+		old_role = self.bot.CountingConfig.get("words_allowed_role")
 		self.bot.CountingConfig.update("words_allowed_role", role.id)
+
+		channel = await self.bot.getch_channel(self.bot.config.get("config_logging_channel"))
+		await channel.send(embed=Embed(
+			title="Counting Words Allow Role Changed",
+			description=f"""
+Before: <@&{old_role}>
+After: {role.men}
+Action by: {interaction.user.mention}
+""",
+		colour=Colour.green())
+		.set_footer(text=f"DB Bot | {date.today().strftime('%B %d, %Y')}", icon_url=interaction.user.display_avatar.url)
+		.set_thumbnail(url=interaction.guild.icon.url)
+		)
+
 		await interaction.send(f"Users with `{role.name}` will now be able to send words in the counting channel.", ephemeral=True)
 
 	@counting_config.subcommand(name="count", description="Change the last count the bot knows of")
@@ -110,7 +187,22 @@ class CountingConfig(Cog):
 		if not (interaction.user.guild_permissions.manage_guild or interaction.user.id == self.bot.owner_id):
 			return await interaction.send("Only guild managers are allowed to use this command.", ephemeral=True)
 
+		old_count = self.bot.CountingConfig.get("counting_count")
 		self.bot.CountingConfig.update("counting_count", last_count)
+
+		channel = await self.bot.getch_channel(self.bot.config.get("config_logging_channel"))
+		await channel.send(embed=Embed(
+			title="Counting Count Changed",
+			description=f"""
+Before: `{old_count}`
+After: `{last_count}`
+Action by: {interaction.user.mention}
+""",
+			colour=Colour.green())
+			.set_footer(text=f"DB Bot | {date.today().strftime('%B %d, %Y')}", icon_url=interaction.user.display_avatar.url)
+			.set_thumbnail(url=interaction.guild.icon.url)
+		)
+
 		await interaction.send(f"Last count set to {last_count}.", ephemeral=True)
 
 	@counting_config.subcommand(name="author", description="Change the last author of counting the bot knows of")
@@ -125,7 +217,21 @@ class CountingConfig(Cog):
 		if not (interaction.user.guild_permissions.manage_guild or interaction.user.id == self.bot.owner_id):
 			return await interaction.send("Only guild managers are allowed to use this command.", ephemeral=True)
 
+		old_author = self.bot.CountingConfig.get("counting_count_author")
 		self.bot.CountingConfig.update("counting_count_author", last_count_author.id)
+		channel = await self.bot.getch_channel(self.bot.config.get("config_logging_channel"))
+		await channel.send(embed=Embed(
+			title="Last Count Author Changed",
+			description=f"""
+Before: <@{old_author}>
+After: {last_count_author.mention}
+Action by: {interaction.user.mention}
+""",
+			colour=Colour.green())
+			.set_footer(text=f"DB Bot | {date.today().strftime('%B %d, %Y')}", icon_url=interaction.user.display_avatar.url)
+			.set_thumbnail(url=interaction.guild.icon.url)
+		)
+
 		await interaction.send(f"Last author set to {last_count_author.mention}", ephemeral=True)
 
 	@counting_config.subcommand(name="claim", description="Change the channel in which users can claim their prize")
@@ -146,9 +252,8 @@ class CountingConfig(Cog):
 		except:
 			old_prize_claim_channel = None
 
-		if prize_claim_channel.id != old_prize_claim_channel:
-			self.bot.CountingConfig.update("prize_claim_channel_id", prize_claim_channel.id)
-		await interaction.send(f"Counting prizes claim channel set to {prize_claim_channel.mention}", ephemeral=True)
+		if prize_claim_channel.id == old_prize_claim_channel.id:
+			return await interaction.send("The channel you specified is already the channel in which users can claim their prizes.", ephemeral=True)
 
 		try:
 			await prize_claim_channel.send("Ensuring I can send messages here since I'm too lazy to actually do it through permissions properly.", delete_after=0)
@@ -169,23 +274,43 @@ class CountingConfig(Cog):
 		).add_field(
 					name="How to claim",
 					value="""
-				To claim your prize, simply run the following command:
+To claim your prize, simply run the following command:
 
-				`db claim prize counting <link-to-congrats-message>`
-				Make sure that the `link-to-congrats-message` is a complete link and it links to the message saying you won x prize.
+`db claim prize counting <link-to-congrats-message>`
+Make sure that the `link-to-congrats-message` is a complete link and it links to the message saying you won x prize.
 
-				You are allowed to run the command only once every 6 hours
+You are allowed to run the command only once every 6 hours
 """
 				).set_thumbnail(url=interaction.guild.icon.url).set_footer(text=f"DB Bot | {date.today().strftime('%B %d, %Y')}"))
-		await interaction.send(f"Claim channel has been set to {prize_claim_channel.mention}", ephemeral=True)
 
-	@counting_config.subcommand(name="prizes", description="Configure settings related to counting prizes.")
-	async def config_counting_prizes(self): ...
+		self.bot.CountingConfig.update("prize_claim_channel_id", prize_claim_channel.id)
 
-	@config_counting_prizes.subcommand(name="add", description="Add a prize for a certain count")
-	async def config_counting_prizes_add(
+		channel = await self.bot.getch_channel(self.bot.config.get("config_logging_channel"))
+		await channel.send(embed=Embed(
+			title="Counting Prize Claim Channel Changed",
+			description=f"""
+Before: {old_prize_claim_channel.mention if old_prize_claim_channel is not None else "None"}
+After: {prize_claim_channel.mention}
+Action by: {interaction.user.mention}
+""",
+			colour=Colour.green())
+			.set_footer(text=f"DB Bot | {date.today().strftime('%B %d, %Y')}", icon_url=interaction.user.display_avatar.url)
+			.set_thumbnail(url=interaction.guild.icon.url)
+		)
+		await interaction.send(f"Counting prizes claim channel set to {prize_claim_channel.mention}", ephemeral=True)
+
+	@counting_config.subcommand(name="prizes", description="Add/Rem a prize for a certain count")
+	async def config_counting_prizes(
 		self,
 		interaction: Interaction,
+		add_or_remove = SlashOption(
+			description="Add or remove a prize for a certain count",
+			required=True,
+			choices={
+				"add_or_change": "add",
+				"remove": "remove"
+			}
+		),
 		count: int =  SlashOption(
 			description="The count at which the new prize should be given out.",
 			required=True
@@ -197,31 +322,35 @@ class CountingConfig(Cog):
 	):
 		if not (interaction.user.guild_permissions.manage_guild or interaction.user.id == self.bot.owner_id):
 			return await interaction.send("Only guild managers are allowed to use this command.", ephemeral=True)
+
 		old = self.bot.CountingConfig.get("counting_prizes")
-		old[str(count)] = prize
+		if str(count) in old.keys():
+			old_prize = old[str(count)]
+		else:
+			old_prize = None
+
+		if add_or_remove == "add":
+			old[str(count)] = prize
+		else:
+			if str(count) in old.keys():
+				del old[str(count)]
 		self.bot.CountingConfig.update("counting_prizes", old)
+
+		channel = await self.bot.getch_channel(self.bot.config.get("config_logging_channel"))
+		await channel.send(embed=Embed(
+			title="Counting Prize Changed",
+			description=f"""
+Count: `{count}`
+Before: {old_prize if old_prize is not None else "None"}
+After: {prize if add_or_remove == "add" else "None"}
+Action by: {interaction.user.mention}
+""",
+			colour=Colour.green())
+			.set_footer(text=f"DB Bot | {date.today().strftime('%B %d, %Y')}", icon_url=interaction.user.display_avatar.url)
+			.set_thumbnail(url=interaction.guild.icon.url)
+		)
+
 		return await interaction.send(f"Al'dun boss\n{old}", ephemeral=True)
-
-	@config_counting_prizes.subcommand(name="remove", description="Remove a number/count from getting a prize")
-	async def config_counting_prizes_remove(
-		self,
-		interaction: Interaction,
-		count: int =  SlashOption(
-			description="The count at which the new prize should be given out.",
-			required=True
-		),
-	):
-		if not (interaction.user.guild_permissions.manage_guild or interaction.user.id == self.bot.owner_id):
-			return await interaction.send("Only guild managers are allowed to use this command.", ephemeral=True)
-		old = self.bot.CountingConfig.get("counting_prizes")
-		try:
-			del old[str(count)]
-		except:
-			pass
-
-		self.bot.CountingConfig.update("counting_prizes", old)
-		return await interaction.send(f"Al'dun boss\n{old}", ephemeral=True)
-
 
 def setup(bot):
 	bot.add_cog(CountingConfig(bot))
