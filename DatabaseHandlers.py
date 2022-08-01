@@ -47,6 +47,8 @@ class GrinderDatabaseHandler():
 
 	async def forget_grinder(self, user_id: int) -> None:
 		info = await self.get_info(user_id)
+		if not info:
+			return
 		perks_allowed, tier = info[0], info[4]
 		total_paid, paid_in_timeframe = info[2], info[3]
 		await self.bot.db.execute("DELETE FROM grinder_payments WHERE user_id = ?", (user_id, ))

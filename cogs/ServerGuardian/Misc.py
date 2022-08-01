@@ -1,7 +1,3 @@
-"""
-A Basic Cog template using nextcord
-"""
-
 from nextcord.ext.commands import Cog, Bot
 from nextcord.ext import commands
 

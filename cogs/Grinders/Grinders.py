@@ -1,3 +1,4 @@
+from nextcord.ext import commands
 from asyncio import tasks
 import asyncio
 from typing import Literal, Optional
@@ -34,17 +35,17 @@ class BecomeAGrinder(nextcord.ui.View):
 			self.bot.GrindersConfig.get("tier_role_mapping").values()])
 
 		await interaction.user.add_roles(self.bot.guild.get_role(self.bot.GrindersConfig.get("pending_grinder")))
-		await interaction.send("Al' dun!", ephemeral=True)
+		return
 
 	@nextcord.ui.button(label="T1", style=nextcord.ButtonStyle.green, custom_id="grinder_t1")
 	async def t1(self, button: nextcord.ui.Button, interaction: Interaction):
 		await self.becomagrinder(interaction, "1")
-		await interaction.send(f"Congrats! You are now a **Tier 1 grinder**! You can access all the perks after a successful payment!\nHead over to {' or, '.join([f'<#{id}>' for id in self.bot.GrindersConfig.get('grinder_payment_channels')])} for information on payments!", ephemeral=True)
+		await interaction.send(f"Congrats! You are now a **Tier 1 grinder**! You can access all the perks after a successful payment!\nHead over to {' or, '.join([f'<#{id}>' for id in self.bot.GrindersConfig.get('payment_channels')])} for information on payments!", ephemeral=True)
 
 	@nextcord.ui.button(label="T2", style=nextcord.ButtonStyle.green, custom_id="grinder_t2")
 	async def t2(self, button: nextcord.ui.Button, interaction: Interaction):
 		await self.becomagrinder(interaction, "2")
-		await interaction.send(f"Congrats! You are now a **Tier 2 grinder**! You can access all the perks after a successful payment!\nHead over to {' or, '.join([f'<#{id}>' for id in self.bot.GrindersConfig.get('grinder_payment_channels')])} for information on payments!", ephemeral=True)
+		await interaction.send(f"Congrats! You are now a **Tier 2 grinder**! You can access all the perks after a successful payment!\nHead over to {' or, '.join([f'<#{id}>' for id in self.bot.GrindersConfig.get('payment_channels')])} for information on payments!", ephemeral=True)
 
 	@nextcord.ui.button(label="Resign", style=nextcord.ButtonStyle.red, custom_id="grinder_resign")
 	async def resign(self, button: nextcord.ui.Button, interaction: Interaction):
@@ -67,7 +68,7 @@ class Grinders(Cog):
 		if not self.GrinderViewsAdded:
 			self.bot.add_view(BecomeAGrinder(self.bot))
 
-	
+
 	def beautify_top_10(self, data):
 		h = []
 		for i in data:
@@ -129,7 +130,7 @@ Please note that your lifetime payments have been saved!
 		await asyncio.sleep(time_remaining)
 
 	@commands.command(name="grinder_pay")
-	async def grinder_pay(self, ctx: commands.Context, arg: Literal["channels", "users"]):
+	async def grinder_pay(self, ctx: commands.Context, arg):
 		if arg == "channels":
 			return await ctx.send(f"Payment channels: {', '.join([f'<#{id}>' for id in self.bot.GrindersConfig.get('payment_channels')])}", allowed_mentions=AllowedMentions.none())
 		elif arg == "users":
@@ -160,12 +161,16 @@ We **recommend** to keep your DMs open to avoid any issues, as you may not recie
 		for channel_id in self.bot.GrindersConfig.get("payment_channels"):
 			channel = await self.bot.getch_channel(channel_id)
 			if channel is not None:
-				await channel.send(embed=embed)
+				mws = await channel.send(embed=embed)
+				await mws.pin()
 
 	@commands.command(name="grinder_menu")
 	@commands.is_owner()
-	async def grinder_menu(self, ctx):
-		channel = await self.bot.getch_channel(self.bot.GrindersConfig.get("info_channel"))
+	async def grinder_menu(self, ctx, ere=True):
+		if not ere:
+			channel = await self.bot.getch_channel(self.bot.GrindersConfig.get("info_channel"))
+		else:
+			channel = ctx.channel
 
 		e1 = Embed(
 			title="Company Support Team!", 
@@ -203,6 +208,19 @@ We **recommend** to keep your DMs open to avoid any issues, as you may not recie
 		await channel.send(embeds=[e1, t1, t2])
 		await channel.send(embed=wannabe, view=BecomeAGrinder(self.bot))
 
+	@commands.command(name="dump_grinder")
+	@commands.is_owner()
+	async def dump_grinder_info(self, ctx):
+		info = await self.bot.db.execute("SELECT * FROM grinder_payments")
+		info = await info.fetchall()
+		info = "\n".join([str(i) for i in info])
+
+		resigned = await self.bot.db.execute("SELECT * FROM resigned_grinders")
+		resigned = await resigned.fetchall()
+		resigned = "\n".join([str(i) for i in resigned])
+
+		message = f"**Grinders Info:**\n{info if info else 'Neh'}\n\n**Resigned Grinders Info:**\n{resigned if resigned else 'Neh'}"
+		await ctx.send(message[:2000])
 
 def setup(bot: Bot):
 	bot.add_cog(Grinders(bot))
