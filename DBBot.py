@@ -5,6 +5,7 @@ from ConfigHandler import Config
 from typing import List
 import aiosqlite
 from DatabaseHandlers import AllowancesDatabaseHandler
+import traceback
 
 
 bot: BotBaseBot = BotBaseBot(command_prefix="db", case_insensitive=True, strip_after_prefix=True, intents=Intents.all())
@@ -29,13 +30,19 @@ cogs: List[str] = [
 	"cogs.Roles.SelfRoles",
 	"cogs.Roles.SlashRoles",
 
+	"cogs.ServerGuardian.BumpPing",
+	"cogs.ServerGuardian.Misc",
 	"cogs.ServerGuardian.TwitterPing",
-
 
 	"cogs.Claim",
 	"cogs.Owner",
 	"cogs.Support",
 ]
+
+@bot.event
+async def on_error(event, *args, **kwargs): 
+	
+	...
 
 @bot.event
 async def on_ready() -> None:

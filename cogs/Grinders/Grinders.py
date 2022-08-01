@@ -1,6 +1,7 @@
 from asyncio import tasks
 import asyncio
 from typing import Literal, Optional
+from discord import AllowedMentions
 from nextcord.ext.commands import Cog, Bot
 from nextcord.ext import commands, tasks
 from nextcord import Embed, Interaction, User
@@ -19,12 +20,12 @@ class BecomeAGrinder(nextcord.ui.View):
 		if interaction.user.id in current_grinders:
 			grinder_info = await self.bot.grinders_db.get_info(interaction.user.id)
 			if str(grinder_info[4]) == tier:
-				return interaction.send("You are already a grinder at that tier!", ephmeral=False)
+				return interaction.send("You are already a grinder at that tier!", ephemeral=False)
 			else:
 				perks_allowed = "False" if grinder_info[0] == "False" else "True"
 				await self.bot.grinders_db.accept_change(interaction.user.id, tier, perks_allowed)
 				if perks_allowed == "True":
-					await interaction.user.add_roles(self.bot.GrindersConfig.get("tier_role_mapping")[tier])
+					await interaction.user.add_roles(self.bot.guild.get_role(self.bot.GrindersConfig.get("tier_role_mapping")[tier]))
 		else:
 			await self.bot.grinders_db.accept_change(interaction.user.id, tier, "False")
 
@@ -33,6 +34,7 @@ class BecomeAGrinder(nextcord.ui.View):
 			self.bot.GrindersConfig.get("tier_role_mapping").values()])
 
 		await interaction.user.add_roles(self.bot.guild.get_role(self.bot.GrindersConfig.get("pending_grinder")))
+		await interaction.send("Al' dun!", ephemeral=True)
 
 	@nextcord.ui.button(label="T1", style=nextcord.ButtonStyle.green, custom_id="grinder_t1")
 	async def t1(self, button: nextcord.ui.Button, interaction: Interaction):
@@ -93,7 +95,7 @@ Please note that your lifetime payments have been saved!
 		except:
 			pass
 
-	@tasks.loop(hours=168)
+	@tasks.loop(hours=24*7)
 	async def wipe_grinder_db(self):
 		for user_id, paid, tier in await self.bot.grinders_db.get_all_payments():
 			requirement = self.bot.GrindersConfig.get("payment_requirements")[str(tier)]
@@ -119,7 +121,7 @@ Please note that your lifetime payments have been saved!
 					await m.pin()
 				except:
 					pass
-	
+
 	@wipe_grinder_db.before_loop
 	async def before_wipe_loop(self):
 		next_saturday = pendulum.now(tz="GMT").next(pendulum.SATURDAY).timestamp()-1
@@ -127,11 +129,11 @@ Please note that your lifetime payments have been saved!
 		await asyncio.sleep(time_remaining)
 
 	@commands.command(name="grinder_pay")
-	async def grinder_pay(self, ctx: commands.Context, arg: Literal["channels, users"]):
+	async def grinder_pay(self, ctx: commands.Context, arg: Literal["channels", "users"]):
 		if arg == "channels":
-			return await ctx.send(f"Payment channels: {', '.join([f'<#{id}>' for id in self.bot.GrindersConfig.get('payment_channels')])}")
+			return await ctx.send(f"Payment channels: {', '.join([f'<#{id}>' for id in self.bot.GrindersConfig.get('payment_channels')])}", allowed_mentions=AllowedMentions.none())
 		elif arg == "users":
-			return await ctx.send(f"Payment acceptors: {', '.join([f'<@{id}>' for id in self.bot.GrindersConfig.get('payment_acceptors')])}")
+			return await ctx.send(f"Payment acceptors: {', '.join([f'<@{id}>' for id in self.bot.GrindersConfig.get('payment_acceptors')])}", allowed_mentions=AllowedMentions.none())
 		return await ctx.send("Invalid argument")
 
 	@commands.command(name="payment_info")

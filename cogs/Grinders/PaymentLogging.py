@@ -9,30 +9,6 @@ class GrindersPaymentLogging(Cog):
 		self.bot = bot
 		self.bot.process_payment = self.process_payment
 
-	async def post_payment(self, payee: User, amount: int, requirement_left: int, tier: int):
-		await self.bot.grinders_db.add(payee.id, amount)
-
-		next_saturday = pendulum.now(tz="GMT").next(pendulum.SATURDAY).timestamp()-1
-
-		if requirement_left > 0:
-			m = f"Your payment of **⏣{amount:3,}** has been received and logged successfully.\n You have until <t:{next_saturday}:F> to complete your payment of **⏣{requirement_left:3,}**"
-		else:
-			m = "Your payment has been received and logged successfully.\n You have **completed your payment** requirement for this week!\n**Your perks have been auto claimed**, Enjoy!"
-			await self.bot.grinders_db.accept_change(payee.id, tier, "True")
-			roles = payee.roles
-			roles.append(self.bot.getch_role(self.bot.grinders_db.get("tier_role_mapping")(str(tier))))
-			await payee.add_roles(roles)
-
-		try:
-			await payee.send(embed=Embed(
-				title="Grinder Payment Received",
-				description=(m+f"\nYour **weekly** ranking is: `{await self.bot.grinders_db.get_ranking_weekly(payee.id)}` and your **monthly** ranking is `{await self.bot.grinders_db.get_ranking_monthly(payee.id)}`"),
-				colour=0x2ecc71
-				).set_footer(text="Thanks for supporting us!", icon_url=payee.display_avatar.url).set_thumbnail(url=self.bot.guild.icon.url)
-			)
-		except:
-			pass
-
 	async def process_payment(self, message: Message, payee: User, acceptor: User, cash: int):
 		await self.bot.grinders_db.add(payee.id, cash)
 		h = await self.bot.grinders_db.get_info(payee.id)
@@ -82,7 +58,29 @@ Your current grinder tier is: `{tier}`
 			.set_thumbnail(message.guild.icon.url)
 			.set_footer(icon_url=payee.display_avatar.url, text=left)
 		)
-		await self.post_payment(False, payee, cash, requirement_left, tier)
+
+		await self.bot.grinders_db.add(payee.id, cash)
+		next_saturday = pendulum.now(tz="GMT").next(pendulum.SATURDAY).timestamp()-1
+
+		if requirement_left > 0:
+			m = f"Your payment of **⏣{cash:3,}** has been received and logged successfully.\n You have until <t:{int(next_saturday)}:F> to complete your payment of **⏣{requirement_left:3,}**"
+		else:
+			m = "Your payment has been received and logged successfully.\n You have **completed your payment** requirement for this week!\n**Your perks have been auto claimed**, Enjoy!"
+			await self.bot.grinders_db.accept_change(payee.id, tier, "True")
+			roles = payee.roles
+			roles.append(self.bot.getch_role(self.bot.GrindersConfig.get("tier_role_mapping")(str(tier))))
+			await payee.add_roles(roles)
+
+		try:
+			await payee.send(embed=Embed(
+				title="Grinder Payment Received",
+				description=(m+f"\nYour **weekly** ranking is: `{await self.bot.grinders_db.get_ranking_weekly(payee.id)}` and your **monthly** ranking is `{await self.bot.grinders_db.get_ranking_monthly(payee.id)}`"),
+				colour=0x2ecc71
+				).set_footer(text="Thanks for supporting us!", icon_url=payee.display_avatar.url).set_thumbnail(url=self.bot.guild.icon.url)
+			)
+		except:
+			pass
+
 
 		return
 

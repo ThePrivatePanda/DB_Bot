@@ -88,7 +88,7 @@ class SupportButton(ui.Button["SupportView"]):
 
         thread: Thread = await interaction.channel.create_thread(
             name = f"{interaction.user}",
-            type = ChannelType.public_thread,
+            type = ChannelType.private_thread,
         )
 
         em: Embed = Embed(
@@ -122,7 +122,7 @@ class SupportButton(ui.Button["SupportView"]):
         except TimeoutError:
             return await close_support_thread(thread, interaction.user, self.bot)
         else:
-            return await thread.send(f"<@&{self.bot.config.get('support_role')}>", delete_after=5)
+            return await thread.send(f"<@&{self.bot.config.get('support_role')}>, <@&{self.bot.config.get('main_bots_role')}>", delete_after=5)
 
     async def callback(self, interaction: Interaction) -> None:
         if interaction.user.id in self.bot.support_users.keys():
@@ -281,10 +281,10 @@ Explain your problem/question with relevant links/proofs and a staff member will
             self.bot.allowed_users[ctx.channel.id] = [user.id]
 
         try:
-            del self.bot.disallowed_users[ctx.channel.id]
-        except:
+            t = self.bot.disallowed_users[ctx.channel.id].remove(user.id)
+            self.bot.disallowed_users[ctx.channel.id] = t
+        except: 
             pass
-
         await ctx.channel.send(user.mention, delete_after=0)
         await ctx.channel.send(f"\✅ Added {user.mention} to the thread.", allowed_mentions=AllowedMentions.none())
 
@@ -302,7 +302,7 @@ Explain your problem/question with relevant links/proofs and a staff member will
             self.bot.disallowed_users[ctx.channel.id] = [user.id]
 
         await ctx.channel.remove_user(user)
-        await ctx.channel.send(f"\❎ Removed {user.mention} from the thread. They will not be able to join again unlessy you add them.", allowed_mentions=AllowedMentions.none())
+        await ctx.channel.send(f"\❎ Removed {user.mention} from the thread. They will not be able to join again unless you add them.", allowed_mentions=AllowedMentions.none())
 
     @commands.Cog.listener("on_thread_member_join")
     async def on_thread_member_join(self, member: Member) -> None:
@@ -310,18 +310,20 @@ Explain your problem/question with relevant links/proofs and a staff member will
         thread_author: User = first_thread_message.mentions[0]
         if member.thread.parent_id != self.bot.config.get("support_channel_id"):
             return
-        
+
         try:
             if member.id in self.bot.disallowed_users[member.thread_id]:
                 await member.thread.remove_user(member)
                 return
         except:
             pass
+
         try:
             if member.id in self.bot.allowed_users[member.thread_id]:
                 return
         except:
             pass
+
         if not (member.id == thread_author.id or member.thread.guild.get_member(member.id).get_role(self.bot.config.get("support_role"))):
             await member.thread.remove_user(member)
 

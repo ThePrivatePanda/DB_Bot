@@ -4,3 +4,4 @@ __pycache__/
 dbs/
 config.json
 todo.json
+*.json

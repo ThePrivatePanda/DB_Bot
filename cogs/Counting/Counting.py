@@ -25,6 +25,7 @@ pattern = re.compile("\d+")
 class Counting(Cog):
     def __init__(self, bot: Bot):
         self.bot = bot
+        self.managed = []
 
     @Cog.listener("on_message")
     async def on_message_counting(self, message: Message):
@@ -41,19 +42,21 @@ class Counting(Cog):
         count = int(message.content)
 
         if count != self.bot.CountingConfig.get("counting_count") + 1:
+            self.managed.append(message.id)
             await message.delete()
             await message.channel.send(
                 content=f"{message.author.mention} Incorrect count, try again! If there's a problem, contact <@{self.bot.owner_id}>.",
                 allowed_mentions=AllowedMentions.none(),
-                delete_after=7)
+                delete_after=5)
             return
 
         if message.author.id == self.bot.CountingConfig.get("counting_count_author"):
+            self.managed.append(message.id)
             await message.delete()
             await message.channel.send(
                 content=f"{message.author.mention} You cannot count twice in a row! If there's a problem, contact <@{self.bot.owner_id}>.",
                 allowed_mentions=AllowedMentions.none(),
-                delete_after=7)
+                delete_after=5)
             return
 
         self.bot.CountingConfig.update("counting_count", count)
@@ -68,12 +71,12 @@ Congrats {message.author.mention}! You won **{self.bot.CountingConfig.get('count
 Please run the command `/claim prize counting` in <#{self.bot.CountingConfig.get('prize_claim_channel_id')}> for the payout!
 """)
 
-        previous_allowances = self.bot.allowances_db.get_allowances(message.author.id)
+        previous_allowances = await self.bot.allowances_db.get_allowances(message.author.id)
 
         if previous_allowances is None:
             allowance = 1
         else:
-            allowance = previous_allowances + 1
+            allowance = previous_allowances[0] + 1
 
         await self.bot.allowances_db.add(message.author.id, allowance)
         await self.bot.claims_db.add(message.author.id, "counting", self.bot.CountingConfig.get("counting_prizes")[message.content])
@@ -83,12 +86,13 @@ Please run the command `/claim prize counting` in <#{self.bot.CountingConfig.get
     async def on_message_counting_delete(self, message: Message):
         if message.channel.id != self.bot.CountingConfig.get("counting_channel"):
             return
-
+        if message.id in self.managed:
+            return
         if message.content == str(self.bot.CountingConfig.get("counting_count")):
             self.bot.CountingConfig.update("counting_count", self.bot.CountingConfig.get("counting_count") - 1)
             await message.channel.send(
                 content=f"{message.author.mention} You naughty lil kid ruinin it for everyone be deletin your messages. Don't wanna play? ok, here's the event blacklist for you.",
-                delete_after=7
+                delete_after=5
             )
 
             try:

@@ -72,7 +72,7 @@ class GrinderDatabaseHandler():
 	
 	async def get_all_payments(self):
 		h = await self.bot.db.execute("SELECT user_id, paid_in_timeframe, tier FROM grinder_payments")
-		return await [(a, b, c) for a, b, c in await h.fetchall()]
+		return [(a, b, c) for a, b, c in await h.fetchall()]
 	
 	async def get_ranking_weekly(self, user_id: int) -> int:
 		h = await self.bot.db.execute("SELECT user_id, paid_in_timeframe FROM grinder_payments ORDER BY paid_in_timeframe DESC")
@@ -112,8 +112,8 @@ class ClaimDatabaseHandler():
 		info = await cursor.fetchall()
 		return [i[0] for i in info]
 	
-	async def rem(self, user_id, whatfor):
-		await self.bot.db.execute("DELETE FROM claims WHERE user_id = ? AND whatfor = ?", (user_id, whatfor))
+	async def rem(self, user_id, whatfor, prize):
+		await self.bot.db.execute("DELETE FROM claims WHERE user_id = ? AND whatfor = ? AND prize = ?", (user_id, whatfor, prize))
 		await self.bot.db.commit()
 
 
@@ -128,8 +128,8 @@ class AllowancesDatabaseHandler():
 
 	async def get_users(self):
 		cursor = await self.bot.db.execute("SELECT user_id FROM allowances")
-		info = cursor.fetchall()
-		return info
+		info = await cursor.fetchall()
+		return [i[0] for i in info]
 
 	async def get_allowances(self, user_id):
 		cursor = await self.bot.db.execute("SELECT allowance FROM allowances WHERE user_id = ?", (user_id, ))
@@ -149,8 +149,9 @@ class AllowancesDatabaseHandler():
 									  )
 		else:
 			await self.bot.db.execute("INSERT INTO allowances VALUES(?, ?)", (user_id, amount))
+		await self.bot.db.commit()
 
-	async def remove(self, user_id, amount):
+	async def remove(self, user_id, amount): # amount is the new amount of allowances- not the amount to remove
 		if user_id in await self.get_users():
 			await self.bot.db.execute("""
 				UPDATE allowances
@@ -161,6 +162,7 @@ class AllowancesDatabaseHandler():
 										  user_id
 									  )
 									  )
+			await self.bot.db.commit()
 		else:
 			return False
 		return True
@@ -242,4 +244,8 @@ class RemindersDatabaseHandler:
 
 	async def rem(self, user_id, message_id):
 		await self.bot.db.execute("DELETE FROM reminders WHERE user_id = ? and message_id = ?", (user_id, message_id))
+		await self.bot.db.commit()
+	
+	async def purge_user(self, user_id):
+		await self.bot.db.execute("DELETE FROM reminders WHERE user_id = ?", (user_id, ))
 		await self.bot.db.commit()

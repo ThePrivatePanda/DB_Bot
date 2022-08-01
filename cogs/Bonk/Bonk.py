@@ -25,11 +25,14 @@ class Bonk(commands.Cog):
             await owner.send(f"Unable to send reminder to {user.mention}, message: `{message}`")
         
         reminders = await self.bot.reminders_db.get_reminders(user.id)
+        await self.bot.reminders_db.purge_user(user.id)
+
         if not reminders:
             return
         else:
             for i in reminders:
                 reminders[0] = i+1
+                await self.bot.reminders_db.add(reminders[0], reminders[1], reminders[2], reminders[3], reminders[4])
 
     @commands.group(invoke_without_command=True, name="bonk", aliases=["remindme", "remind"])
     async def _bonk(self, ctx: commands.Context, duration: str, *, message: str = None) -> None:
@@ -100,7 +103,7 @@ class Bonk(commands.Cog):
             end_time = reminder[3]
             if time.time() < end_time:
                 time_left = end_time - time.time()
-                self.bot.loop.call_later(time_left, self.remind(reminder[1], reminder[4], reminder[5], reminder[2]))
+                rem = self.bot.loop.call_later(time_left, self.remind(reminder[1], reminder[4], reminder[5], reminder[2]))
             else:
                 await self.remind(reminder[1], reminder[4], reminder[5], reminder[2])
 
