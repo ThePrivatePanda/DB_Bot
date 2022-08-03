@@ -8,7 +8,7 @@ from aiosqlite.core import Connection
 class BotBaseBot(commands.Bot):
 	db: Connection
 
-	async def getch_guild(self, guild_id: int) -> Union[Guild, bool]:
+	async def getch_guild(self, guild_id: int) -> Optional[Guild]:
 		"""Looks up a guild in cache or fetches if not found."""
 		guild: Union[Guild, None] = self.get_guild(guild_id)
 		if guild:
@@ -35,7 +35,7 @@ class BotBaseBot(commands.Bot):
 				return False
 		return role
 
-	async def getch_user(self, user_id: int) -> Union[User, bool]:
+	async def getch_user(self, user_id: int) -> Optional[User]:
 		"""Looks up a user in cache or fetches if not found."""
 		user: Union[User, None] = self.get_user(user_id)
 		if user:
@@ -46,7 +46,7 @@ class BotBaseBot(commands.Bot):
 			return False
 		return user
 
-	async def getch_member(self, guild_id: int, member_id: int) -> Union[Member, bool]:
+	async def getch_member(self, guild_id: int, member_id: int) -> Optional[Member]:
 		"""Looks up a member in cache or fetches if not found."""
 
 		guild: Union[Member, None] = await self.getch_guild(guild_id)
@@ -64,7 +64,7 @@ class BotBaseBot(commands.Bot):
 
 		return member
 
-	async def getch_channel(self, channel_id: int) -> Union[GuildChannel, bool]:
+	async def getch_channel(self, channel_id: int) -> Optional[GuildChannel]:
 		"""Looks up a channel in cache or fetches if not found."""
 		channel: Union[GuildChannel, None] = self.get_channel(channel_id)
 		if channel:
