@@ -309,7 +309,7 @@ class SelfRoles(commands.Cog):
 				url=ctx.guild.icon.url
 			).set_footer(
 				icon_url=ctx.guild.me.display_avatar.url,
-				text=f"DB Bot | {date.today().strftime('%B %d, %Y')}"
+				text=f"DB Bot | Selfroles"
 			)
 		
 		if here is not False:
@@ -331,7 +331,7 @@ class SelfRoles(commands.Cog):
                     url=ctx.guild.icon.url
                 ).set_footer(
                     icon_url=ctx.guild.me.display_avatar.url,
-                    text=f"DB Bot | {date.today().strftime('%B %d, %Y')}"
+                    text=f"DB Bot | Selfroles"
                 )
 
 		if here is not False:
@@ -353,7 +353,7 @@ class SelfRoles(commands.Cog):
                     url=ctx.guild.icon.url
                 ).set_footer(
                     icon_url=ctx.guild.me.display_avatar.url,
-                    text=f"DB Bot | {date.today().strftime('%B %d, %Y')}"
+                    text=f"DB Bot | Selfroles"
                 )
 
 		if here is not False:
@@ -376,7 +376,7 @@ class SelfRoles(commands.Cog):
                     url=ctx.guild.icon.url
                 ).set_footer(
                     icon_url=ctx.guild.me.display_avatar.url,
-                    text=f"DB Bot | {date.today().strftime('%B %d, %Y')}"
+                    text=f"DB Bot | Selfroles"
                 )
 
 		if here is not False:
@@ -398,7 +398,7 @@ class SelfRoles(commands.Cog):
                     url=ctx.guild.icon.url
                 ).set_footer(
                     icon_url=ctx.guild.me.display_avatar.url,
-                    text=f"DB Bot | {date.today().strftime('%B %d, %Y')}"
+                    text=f"DB Bot | Selfroles"
                 )
 
 		if here is not False:
@@ -420,7 +420,7 @@ class SelfRoles(commands.Cog):
                     url=ctx.guild.icon.url
                 ).set_footer(
                     icon_url=ctx.guild.me.display_avatar.url,
-                    text=f"DB Bot | {date.today().strftime('%B %d, %Y')}"
+                    text=f"DB Bot | Selfroles"
                 )
 
 		if here is not False:

@@ -45,7 +45,7 @@ class AFK(commands.Cog):
         for user in msg.mentions:
             if user.id in afk_users:
                 afk_reason, afk_since = await self.bot.afk_db.get_afk_message(user.id)
-                temp_message = f"{user.name} is afk with reason: {afk_reason} since <t:{int(afk_since)}:F>"
+                temp_message = f"{user.name} is afk: {afk_reason} <t:{int(afk_since)}:R>"
 
         if temp_message == "":
             return

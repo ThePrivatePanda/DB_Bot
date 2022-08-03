@@ -8,78 +8,93 @@ from DatabaseHandlers import AllowancesDatabaseHandler
 import traceback
 
 
-bot: BotBaseBot = BotBaseBot(command_prefix="db", case_insensitive=True, strip_after_prefix=True, intents=Intents.all())
+bot: BotBaseBot = BotBaseBot(
+    command_prefix="db",
+    case_insensitive=True,
+    strip_after_prefix=True,
+    intents=Intents.all(),
+)
 
 cogs: List[str] = [
-	"jishaku",
+    "jishaku",
 
-	"cogs.Afk.AfkConfig",
-	"cogs.Afk.Afk",
+    "cogs.Afk.AfkConfig",
+    "cogs.Afk.Afk",
 
-	"cogs.Bonk.BonkConfig",
-	"cogs.Bonk.Bonk",
+    "cogs.Bonk.BonkConfig",
+    "cogs.Bonk.Bonk",
 
-	"cogs.Counting.Counting",
-	"cogs.Counting.CountingConfig",
+    "cogs.Counting.Counting",
+    "cogs.Counting.CountingConfig",
 
-	"cogs.Grinders.GrindersConfig",
-	"cogs.Grinders.PaymentLogging",
-	"cogs.Grinders.Grinders",
+    "cogs.DonoLogging.DonoConfig",
+    "cogs.DonoLogging.DonoLogging",
 
-	"cogs.Roles.RolesConfig",
-	"cogs.Roles.SelfRoles",
-	"cogs.Roles.SlashRoles",
+    "cogs.Grinders.GrindersConfig",
+    "cogs.Grinders.PaymentLogging",
+    "cogs.Grinders.Grinders",
 
-	"cogs.ServerGuardian.BumpPing",
-	"cogs.ServerGuardian.Misc",
-	"cogs.ServerGuardian.TwitterPing",
+    "cogs.Roles.RolesConfig",
+    "cogs.Roles.SelfRoles",
+    "cogs.Roles.SlashRoles",
 
-	"cogs.Claim",
-	"cogs.Owner",
-	"cogs.Support",
+    "cogs.Misc.BumpPing",
+    "cogs.Misc.Misc",
+    "cogs.Misc.Perks",
+    "cogs.Misc.RandomEmbeds",
+    "cogs.Misc.TwitterPing",
+    "cogs.Misc.Welcomer",
+
+    "cogs.Claim",
+    "cogs.Owner",
+    "cogs.Support",
 ]
 
 @bot.event
-async def on_error(event, *args, **kwargs): 
-	
-	...
+async def on_command_error(ctx, error):
+    await ctx.send(error)
+    await bot.owner.send(error)
 
 @bot.event
 async def on_ready() -> None:
-	print(f"Logged in as {bot.user}")
+    print(f"Logged in as {bot.user}")
+
 
 async def startup():
-	print("starting up...")
-	bot.selfrole_view_set = False
-	bot.support_view_set = False
-	bot.owner_id = 736147895039819797
+    print("starting up...")
+    bot.selfrole_view_set = False
+    bot.support_view_set = False
+    bot.verify_view_set = False
+    bot.committee_view_set = False
+    bot.owner_id = 736147895039819797
 
-	await bot.wait_until_ready()
-	# bot vars
-	bot.guild: Guild = await bot.getch_guild(819084505037799465)
-	bot.owner = await bot.getch_user(bot.owner_id)
-	print("Set bot variables")
+    await bot.wait_until_ready()
+    # bot vars
+    bot.guild: Guild = await bot.getch_guild(819084505037799465)
+    bot.owner = await bot.getch_user(bot.owner_id)
+    print("Set bot variables")
 
-	# db stuff
-	bot.db = await aiosqlite.connect("dbs/db.sqlite3")
-	bot.allowances_db: AllowancesDatabaseHandler = AllowancesDatabaseHandler(bot)
+    # db stuff
+    bot.db = await aiosqlite.connect("dbs/db.sqlite3")
+    bot.allowances_db: AllowancesDatabaseHandler = AllowancesDatabaseHandler(bot)
 
-	print("Setup DB")
+    print("Setup DB")
 
-	# cogs
-	for extension in cogs:
-		try:
-			bot.load_extension(extension)
-			print(f"Successfully loaded extension {extension}")
-		except Exception as e:
-			exc = f"{type(e).__name__,}: {e}"
-			print(f"Failed to load extension {extension}\n{exc}")
+    # cogs
+    for extension in cogs:
+        try:
+            bot.load_extension(extension)
+            print(f"Successfully loaded extension {extension}")
+        except Exception as e:
+            exc = f"{type(e).__name__,}: {e}"
+            print(f"Failed to load extension {extension}\n{exc}")
 
-	await bot.resync_slash_commands()
+    await bot.resync_slash_commands()
 
-	print("Synced slash commands")
-	await bot.owner.send("All Ready")
-	print("All Ready")
+    print("Synced slash commands")
+    await bot.owner.send("All Ready")
+    print("All Ready")
+
 
 bot.config = Config("config.json")
 bot.loop.create_task(startup())

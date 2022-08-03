@@ -33,6 +33,7 @@ class GrinderDatabaseHandler():
 									  user_id
 								  )
 								  )
+		await self.bot.db.commit()
 
 	async def add_late(self, user_id: int, amount: int) -> None:
 		await self.bot.db.execute("""
@@ -44,6 +45,7 @@ class GrinderDatabaseHandler():
 									  user_id
 								  )
 								  )
+		await self.bot.db.commit()
 
 	async def forget_grinder(self, user_id: int) -> None:
 		info = await self.get_info(user_id)
@@ -53,6 +55,7 @@ class GrinderDatabaseHandler():
 		total_paid, paid_in_timeframe = info[2], info[3]
 		await self.bot.db.execute("DELETE FROM grinder_payments WHERE user_id = ?", (user_id, ))
 		await self.bot.db.execute("INSERT INTO resigned_grinders VALUES(?, ?, ?, ?, ?, ?)", (user_id, perks_allowed, time.time(), total_paid, paid_in_timeframe, tier))
+		await self.bot.db.commit()
 
 	async def accept_change(self, user_id: int, tier: int, perks_allowed: str) -> None:
 		await self.bot.db.execute("DELETE FROM resigned_grinders WHERE user_id = ?", (user_id, ))
@@ -251,3 +254,49 @@ class RemindersDatabaseHandler:
 	async def purge_user(self, user_id):
 		await self.bot.db.execute("DELETE FROM reminders WHERE user_id = ?", (user_id, ))
 		await self.bot.db.commit()
+
+class DonoLoggingDatabaseHandler:
+	def __init__(self, bot: Bot) -> None:
+		self.bot = bot
+		self.bot.loop.create_task(self.startup())
+	
+	async def startup(self):
+		await self.bot.db.execute("CREATE TABLE IF NOT EXISTS donations (user_id BIGINT, purpose TEXT, donation BIGINT)")
+		await self.bot.db.commit()
+
+	async def get_donors(self, filter=None):
+		if not filter:
+			cur = await self.bot.db.execute("SELECT user_id FROM donations ORDER BY donation")
+			users = await cur.fetchall()
+			return [i[0] for i in users]
+
+	async def add(self, user_id: int, purpose: Literal["giveaway", "special", "event", "heist"], donation: int):
+		if user_id in await self.get_donors():
+			await self.bot.db.execute("UPDATE donations SET donation = donation + ? WHERE user_id = ? AND purpose = ?", (donation, user_id, purpose))
+			await self.bot.db.commit()
+		else:
+			await self.bot.db.execute("INSERT INTO donations VALUES(?, ?, ?)", (user_id, purpose, donation))
+			await self.bot.db.commit()
+	
+	async def remove(self, user_id: int, purpose: Literal["giveaway", "special", "event", "heist"], donation: int):
+		if user_id in await self.get_donors():
+			await self.bot.db.execute("UPDATE donations SET donation = donation - ? WHERE user_id = ? AND purpose = ?", (donation, user_id, purpose))
+			await self.bot.db.commit()
+		else:
+			return False
+
+	async def get_dono(self, user_id: int, purpose: Literal["giveaway", "special", "event", "heist"]):
+		cur = await self.bot.db.execute("SELECT donation FROM donations WHERE user_id = ? AND purpose = ?", (user_id, purpose))
+		data = await cur.fetchone()
+		if data:
+			return data[0]
+		else:
+			return 0
+
+	async def get_all(self, user_id):
+		cur = await self.bot.db.execute("SELECT donation FROM donations WHERE user_id = ?", (user_id, ))
+		inf = await cur.fetchall()
+		if inf:
+			return sum(i[0] for i in inf)
+		else:
+			return 0

@@ -3,5 +3,4 @@ __pycache__/
 .vscode
 dbs/
 config.json
-todo.json
-*.json
+CountingConfig.json
